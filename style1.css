@@ -1,0 +1,61 @@
+        body {
+            margin: 5px;
+            overflow: hidden;
+            background: url('https://i.imgur.com/BfpPXeE.gif') no-repeat center center fixed;
+            opacity: 0.3;
+            animation: backgroundScroll 10s linear infinite;
+        }
+
+        @keyframes backgroundScroll {
+            from { background-position: 0 0; }
+            to { background-position: 100% 0; }
+        }
+
+        .marquee {
+            position: absolute;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .marquee img {
+            width: 350px;
+            height: 350px;
+            display: inline-block;
+            margin: 0 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            animation: scroll 15s linear infinite;
+        }
+
+        @keyframes scroll {
+            from { transform: translateX(100%); }
+            to { transform: translateX(-100%); }
+        }
+
+        .overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .overlay img {
+            width: 350px;
+            height: 350px;
+            display: inline-block;
+            margin: 0 10px;
+            animation: scrollReverse 15s linear infinite;
+        }
+
+        @keyframes scrollReverse {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100%); }
+        }
+
+        .button:hover {
+            transform: scale(1.1);
+        }
