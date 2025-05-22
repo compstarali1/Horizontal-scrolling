@@ -1,0 +1,57 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.5">
+    <title>3D Animated Images Marquee</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        .marquee {
+            display: flex;
+            animation: scroll 7s linear infinite;
+            white-space: nowrap;
+        }
+        .marquee img {
+            height: 290px; /* Adjust height as needed */
+            margin: 0; /* No space between images */
+        }
+        @keyframes scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+</head>
+<body>
+    <div class="marquee" id="marquee">
+        <img src="https://i.imgur.com/8fzd8jl.gif" alt="3D Animation 1">
+        <img src="https://i.imgur.com/PP6vB5t.gif" alt="3D Animation 2">
+        <img src="https://i.imgur.com/YGIBWGz.gif" alt="3D Animation 3">
+        <img src="https://i.imgur.com/8fzd8jl.gif" alt="3D Animation 4">
+        <img src="https://i.imgur.com/PP6vB5t.gif" alt="3D Animation 5">
+        <img src="https://i.imgur.com/YGIBWGz.gif" alt="3D Animation 6">
+        </div>
+
+    <script>
+        window.onload = function() {
+            const marquee = document.getElementById('marquee');
+            if (!marquee) {
+                console.error('Marquee element not found.');
+                return;
+            }
+
+            // Check if images are loaded
+            const images = marquee.getElementsByTagName('img');
+            for (let img of images) {
+                img.onerror = function() {
+                    console.error(`Error loading image: ${img.src}`);
+                    img.alt = 'Image failed to load'; // Fallback text
+                };
+            }
+        };
+    </script>
+</body>
+</html>
