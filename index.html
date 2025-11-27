@@ -1,39 +1,497 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>3D Animated Buttons</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=0.8">
+<title>Asset Locator + OCR + TTS + Media Gallery</title>
+<script src="assets/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+/* RESET & BODY */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Roboto',sans-serif;min-height:100vh;display:flex;flex-direction:column;transition:0.5s;overflow-x:hidden;}
+body.dark{background:linear-gradient(160deg,#0b0f16,#141923);color:#fff;}
+body.light{background:#f5f5f5;color:#111;}
+/* IFRAME & STYLE*/
+#previewContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
-        <link rel="preload" as="style" href="https://github.com/compstarali1/Horizontal-scrolling/blob/13d24a4c8b91fc33cf933ec8d8db6bb0925ae436/style.css">
-<link rel="stylesheet" href="https://github.com/compstarali1/Horizontal-scrolling/blob/13d24a4c8b91fc33cf933ec8d8db6bb0925ae436/style.css">
+#viewerIframe {
+  width: 99%;
+  aspect-ratio: 3 / 2;
+  border: 2px solid #00ffff;
+  border-radius: 14px;
+  background: #000;
+  min-height: 130px;
+  transition: all 0.6s ease;
+}
 
-    <link rel="preload" href="https://github.com/compstarali1/Horizontal-scrolling/blob/80f9eb8b1cbdf6fc3039b220657d7cd8f98861e5/scrip.js" as="script">
-    
+body.light #viewerIframe {
+  border-color: #111;
+}
+/* CONTAINER */
+.container{padding:16px;max-width:480px;margin:0 auto 120px;display:flex;flex-direction:column;gap:12px;}
+h1,h3{text-align:center;text-shadow:0 2px 6px rgba(0,200,255,.3);}
+h3{margin-top:14px;}
+img#topLogo{display:block;margin:12px auto;width:80%;border-radius:20px;box-shadow:0 4px 20px rgba(0,255,255,.2);}
+
+/* CARD */
+.card{background: rgba(15,25,40,.85); border-radius:16px; padding:14px; box-shadow:0 6px 20px rgba(0,200,255,.3); transition:0.3s;}
+body.light .card{background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.15);}
+.card:hover{box-shadow:0 8px 28px rgba(0,255,255,.45);}
+
+/* INPUTS */
+input, textarea{width:100%;padding:12px;border-radius:12px;background:#0f1928;border:1px solid #334;color:#e6eef8;font-family:monospace;outline:none;}
+body.light input,body.light textarea{background:#eee;border:1px solid #ccc;color:#111;}
+textarea{min-height:80px;max-height:200px;resize:none;}
+
+/* BUTTONS */
+button{padding:12px 18px;border-radius:14px;border:none;font-weight:600;cursor:pointer;transition:0.25s;box-shadow:0 4px 12px rgba(0,255,255,.2);background:linear-gradient(145deg,#303a44,#111418);color:#e6eef8;}
+body.light button{background:#eee;color:#111;box-shadow:0 4px 12px rgba(0,0,0,.1);}
+button:hover{transform:translateY(-3px) scale(1.05);}
+button:active{transform:translateY(0) scale(0.98);}
+.asset-btn{background:linear-gradient(145deg,#0a1e2c,#0c2c3e);color:#00ffff;border:1px solid rgba(0,255,255,.3);font-size:1em;margin:4px;padding:10px 16px;border-radius:12px;}
+body.light .asset-btn{background:#ddd;color:#111;border:1px solid #999;}
+.tiny-btn{padding:6px 10px;font-size:0.9em;border-radius:12px;}
+#copyBtn{background:linear-gradient(135deg,#00b4ff,#0072ff);color:#fff;font-weight:700;border:none;border-radius:14px;padding:10px 20px;box-shadow:0 4px 12px rgba(0,200,255,.4);transition:all 0.3s ease;}
+#copyBtn:hover{transform:scale(1.05);box-shadow:0 6px 18px rgba(0,255,255,.5);}
+body.light #copyBtn{background:linear-gradient(135deg,#555,#999);color:#fff;}
+
+/* OPERATOR TITLE */
+#operatorTitle{font-size:1.6em;text-align:center;font-weight:900;margin:10px 0;color:transparent;background:linear-gradient(90deg,#ff00aa,#9d00ff);-webkit-background-clip:text;}
+
+/* OCR LOADER */
+#ocrLoader{display:none;margin:12px auto;width:50px;height:50px;border:6px solid rgba(255,255,255,0.15);border-top:6px solid #00b4ff;border-radius:50%;animation:spin 1.1s linear infinite;}
+@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+
+/* FLEX */
+.flex-row{display:flex;gap:8px;flex-wrap:wrap;}
+.flex-col{display:flex;flex-direction:column;gap:8px;}
+
+/* FLOATING BUTTONS */
+#themeBtn,#mediaBtn{position:fixed;top:12px;padding:10px 16px;border-radius:16px;font-weight:700;box-shadow:0 4px 12px rgba(0,255,255,.3);cursor:pointer;z-index:101;transition:0.3s;}
+#themeBtn{right:12px;background:linear-gradient(145deg,#ff00aa,#9d00ff);color:#fff;}
+body.light #themeBtn{background:#ccc;color:#111;box-shadow:0 4px 12px rgba(0,0,0,.1);}
+#mediaBtn{left:12px;background:linear-gradient(145deg,#00ffdc,#00b4ff);color:#000;}
+body.light #mediaBtn{background:#888;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.1);}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;width:100%;background: rgba(15,25,40,0.95);display:flex;justify-content:space-around;padding:10px 0;box-shadow:0 -4px 20px rgba(0,255,255,.3);z-index:100;}
+body.light .bottom-nav{background:#eee;box-shadow:0 -4px 20px rgba(0,0,0,.1);}
+.nav-btn{flex:1;text-align:center;color:#fff;font-size:0.7em;border:none;background:none;cursor:pointer;transition:0.5s;}
+body.light .nav-btn{color:#111;}
+.nav-btn:hover{color:#00d0ff;transform:scale(1.1);}
+
+/* MEDIA MODAL */
+#mediaModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);display:none;justify-content:center;align-items:center;z-index:102;}
+#menuModal{background:rgba(15,25,40,.95);padding:20px;border-radius:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:12px;width:80%;max-height:80%;overflow:auto;}
+#menuModal button{display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:center;font-size:0.9em;background:#0f1928;color:#00e0ff;opacity:0.5;border:none;border-radius:12px;transition:0.25s;cursor:grab;}
+#menuModal button:hover{opacity:1;transform:scale(1.05);}
+#menuModal button img{width:60px;height:60px;border-radius:8px;pointer-events:none;}
+.pdf-submenu{grid-column:1/-1;background:#2563eb;color:#fff;opacity:1;cursor:pointer;text-align:center;}
+
+/* SELECTED MODAL */
+#selectedModal{position:fixed;top:5%;left:5%;width:90%;height:90%;background:rgba(0,0,0,.95);display:none;justify-content:center;align-items:center;z-index:103;border-radius:8px;overflow:hidden;}
+#selectedModal img{width:100%;height:100%;object-fit:contain;cursor:grab;user-select:none;pointer-events:all;}
+#closeModal{position:absolute;top:12px;right:16px;background:#fff;color:#000;border:none;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;z-index:104;box-shadow:0 0 12px rgba(0,0,0,.6);}
+#closeModal:hover{background:#eee;}
+#modalPrev,#modalNext,#modalShare{position:absolute;top:50%;transform:translateY(-50%);background:#00ffff;color:#000;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;box-shadow:0 0 12px rgba(0,0,0,.6);z-index:105;}
+#modalPrev{left:10px;}
+#modalNext{right:10px;}
+#modalShare{bottom:10px;right:10px;top:auto;}
+#modalPrev:hover,#modalNext:hover,#modalShare:hover{background:#00b4ff;}
+</style>
 </head>
-<body>
-    <marquee behavior="scroll" direction="left" scrollamount="18"> <!-- Added scrollamount for speed control -->
-        <div style="margin: 5px; border-width: 5px; border-style: solid; border-color: black; display: inline-block;">
-            <img src="https://i.imgur.com/TirPoaa.gif" alt="Name" width="1200px" height="300px">
-            <h1 style="text-align: center;">[link1]Title 1</h1>
-        </div>
-        <div style="margin: 5px; border-width: 5px; border-style: solid; border-color: black; display: inline-block;">
-            <img src="https://i.imgur.com/y7EecIR.gif" alt="Stivaletti" width="1200px" height="300" />
-            <h1 style="text-align: center;">REF:REARCAM&nbsp;</h1>
-        </div>
-        <div style="margin: 5px; border-width: 5px; border-style: solid; border-color: black; display: inline-block;">
-            <img src="https://i.imgur.com/y7EecIR.gif" alt="Stivaletti" width="1200px" height="300" />
-            <h1 style="text-align: center;">[link14]Title 14</h1>
-        </div>
-    </marquee>
+<body class="dark">
 
-    <div id="modal" style="display:none;">
-        <iframe id="iframeContainer" src=""></iframe>
+<!-- FLOATING BUTTONS -->
+<button id="mediaBtn">🖼 Media</button>
+<button id="themeBtn">🎨 Theme</button>
+
+<div class="container">
+  <h1>Asset Locator</h1>
+  <img id="topLogo" src="assets/J-FLEET-ENG hq.gif">
+
+  <!-- FILE OCR -->
+  <div class="card flex-row" style="justify-content:center;">
+    <label for="fileInput" class="tiny-btn" style="background:#0072ff;cursor:pointer;">📂 Open Image</label>
+    <input type="file" id="fileInput" accept="image/*" style="display:none;">
+    <button id="clearBtn" class="tiny-btn">Clear</button>
+  </div>
+
+  <!-- OCR PREVIEW -->
+  <div class="card">
+    <h3>OCR Preview</h3>
+    <div id="ocrPreview">OCR text will appear here after processing...</div>
+    <div id="ocrLoader"></div>
+  </div>
+
+  <!-- INPUT + GENERATE -->
+  <div class="card flex-row">
+    <textarea id="inputText" placeholder="Paste OCR text here or press 'Insert OCR Text'..."></textarea>
+    <div class="flex-col">
+      <button id="insertOCRBtn">📄 Insert OCR</button>
+      <div class="card" style="text-align:right;">
+        <button id="generateBtn">⚡ Generate Buttons</button>
+        <button id="ttsBtn">🔊 Read</button>
+        <button id="pauseBtn">⏸️</button>
+      </div>
     </div>
-    <button class="button" onclick="changeIframe('https://lvf.io/#LDN|AL. bv')"><h1>ES85</h1></button>
-    <!-- Additional buttons omitted for brevity -->
-    <script src="script.js"></script>
-</body>
-      <script  src="https://github.com/compstarali1/Horizontal-scrolling/blob/80f9eb8b1cbdf6fc3039b220657d7cd8f98861e5/scrip.js"></script>
+  </div>
+
+  <!-- PREVIEW IFRAME -->
+  <h3>Preview</h3>
+  <div id="previewContainer"><iframe id="viewerIframe"></iframe></div>
+  <div style="text-align:center;"><button id="exportImgBtn">🖼 Export Preview</button></div>
+
+  <div id="operatorTitle">Abellio</div>
+  <div class="operator-track">
+    <button class="operatorBtn active" data-name="Abellio" data-template="https://lvf.io/#LDN|TL" data-color="#ef4444">Abellio</button>
+    <button class="operatorBtn" data-name="Go-Ahead" data-template="https://lvf.io/#LDN|GAL" data-color="#2563eb">Go-Ahead</button>
+    <button class="operatorBtn" data-name="Stagecoach" data-template="https://lvf.io/#LDN|SLN" data-color="#f97316">Stagecoach</button>
+    <button class="operatorBtn" data-name="Metroline" data-template="https://lvf.io/#LDN|ML" data-color="#991b1b">Metroline</button>
+    <button class="operatorBtn" data-name="Arriva" data-template="https://lvf.io/#LDN|AL" data-color="#06b6d4">Arriva</button>
+  </div>
+
+  <div class="card">
+    <h3>Generated Buttons</h3>
+    <div id="buttonsContainer"></div>
+  </div>
+
+  <div class="card">
+    <h3>Extracted Fleet Numbers</h3>
+    <div id="resultsBox">No results yet.</div>
+    <div style="text-align:center;"><button id="copyBtn">📋 Copy Fleet Numbers</button></div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <button class="nav-btn" onclick="scrollToSection('ocrPreview')">OCR</button>
+  <button class="nav-btn" onclick="scrollToSection('inputText')">Input</button>
+  <button class="nav-btn" onclick="scrollToSection('buttonsContainer')">Fleet</button>
+  <button class="nav-btn" onclick="scrollToSection('previewContainer')">Preview</button>
+</div>
+
+<!-- MEDIA MODAL -->
+<div id="mediaModal">
+  <div id="menuModal"></div>
+  <div id="selectedModal">
+    <button id="closeModal">✖</button>
+    <img id="modelImage" src="" alt="Model Image">
+    <button id="modalPrev">◀</button>
+    <button id="modalNext">▶</button>
+    <button id="modalShare">🔗</button>
+  </div>
+</div>
+
+<script>
+// ===== DOM ELEMENTS =====
+const fileInput = document.getElementById('fileInput'),
+      ocrPreview = document.getElementById('ocrPreview'),
+      ocrLoader = document.getElementById('ocrLoader'),
+      inputText = document.getElementById('inputText'),
+      insertOCRBtn = document.getElementById('insertOCRBtn'),
+      generateBtn = document.getElementById('generateBtn'),
+      clearBtn = document.getElementById('clearBtn'),
+      buttonsContainer = document.getElementById('buttonsContainer'),
+      resultsBox = document.getElementById('resultsBox'),
+      iframe = document.getElementById('viewerIframe'),
+      operatorBtns = document.getElementsByClassName('operatorBtn'),
+      copyBtn = document.getElementById('copyBtn'),
+      ttsBtn = document.getElementById('ttsBtn'),
+      pauseBtn = document.getElementById('pauseBtn'),
+      exportImgBtn = document.getElementById('exportImgBtn'),
+      operatorTitle = document.getElementById('operatorTitle'),
+      themeBtn = document.getElementById('themeBtn');
+
+const mediaBtn = document.getElementById('mediaBtn'),
+      mediaModal = document.getElementById('mediaModal'),
+      menuModal = document.getElementById('menuModal'),
+      selectedModal = document.getElementById('selectedModal'),
+      closeModal = document.getElementById('closeModal'),
+      modelImage = document.getElementById('modelImage'),
+      modalPrev = document.getElementById('modalPrev'),
+      modalNext = document.getElementById('modalNext'),
+      modalShare = document.getElementById('modalShare');
+
+let lastOCRText = '',
+    currentTemplate = 'https://lvf.io/#LDN|TL',
+    currentColor = '#ef4444',
+    lastPressedButton = null,
+    currentSpeech = null,
+    currentOperator = 'Abellio',
+    imgX = 0, imgY = 0, isDragging = false, startX = 0, startY = 0,
+    currentIndex = 0;
+
+// ===== MEDIA IMAGES =====
+const modelImages = [
+"assets/21SA 1.jpg","assets/21SA 2.jpg","assets/21SA 3.jpg","assets/21SA 4.jpg","assets/21SA 5.jpg",
+"assets/21SA 6.jpg","assets/21SA 7.jpg","assets/21SA 8.jpg","assets/21SA 9.jpg","assets/21SA 10.jpg",
+"assets/placeholder1.png","assets/placeholder2.png","assets/placeholder3.png","assets/placeholder4.png","assets/placeholder5.png",
+"assets/placeholder6.png","assets/placeholder7.png","assets/placeholder8.png","assets/placeholder9.png","assets/placeholder10.png"
+];
+
+// ===== HELPERS =====
+function scrollToSection(id){document.getElementById(id).scrollIntoView({behavior:'smooth',block:'center'});}
+
+function extractFleetNumbers(text){
+    if(!text) return [];
+    const regex = /\b(?:Asset\s*No[:\-]?\s*)?([A-Z]{1,4}\d{1,5}|\d{3,6})\b/gi;
+    let result=[],match;
+    while((match=regex.exec(text))!==null){const val=match[1].toUpperCase();if(!result.includes(val)) result.push(val);}
+    return result;
+}
+
+function buildButtons(list){
+    buttonsContainer.innerHTML='';
+    if(!list.length){buttonsContainer.innerHTML='<p style="opacity:.6">No valid numbers.</p>';return;}
+    list.forEach(n=>{
+        const b=document.createElement('button');
+        b.textContent=n;
+        b.className='asset-btn';
+        b.onclick=()=>{
+            if(lastPressedButton) lastPressedButton.classList.remove('pressed');
+            b.classList.add('pressed'); lastPressedButton=b;
+            iframe.classList.add('iframe-glow');
+            iframe.src=currentTemplate+encodeURIComponent(' '+n);
+            iframe.dataset.asset=n;
+            iframe.style.borderColor=currentColor;
+            setTimeout(()=>iframe.classList.remove('iframe-glow'),800);
+        };
+        buttonsContainer.appendChild(b);
+    });
+    localStorage.setItem('fleetButtons', JSON.stringify(list));
+}
+
+function generateFromInput(){
+    const text=inputText.value.trim();
+    const fleet=extractFleetNumbers(text);
+    resultsBox.textContent=fleet.length?fleet.join(', '):'No valid fleet numbers found.';
+    buildButtons(fleet);
+}
+
+// ===== THEME =====
+themeBtn.onclick=()=>{document.body.classList.toggle('dark');document.body.classList.toggle('light');};
+
+// ===== OPERATOR BUTTONS =====
+[...operatorBtns].forEach(b=>{
+    b.onclick=function(){
+        [...operatorBtns].forEach(x=>x.classList.remove('active'));
+        this.classList.add('active');
+        currentTemplate=this.dataset.template;
+        currentColor=this.dataset.color;
+        currentOperator=this.dataset.name;
+        operatorTitle.textContent=currentOperator;
+    };
+});
+
+// ===== FILE OCR =====
+fileInput.addEventListener('change', async e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=async ev=>{
+        ocrLoader.style.display='block';
+        ocrPreview.textContent='Processing OCR...';
+        try{
+            const { createWorker }=Tesseract;
+            const worker=createWorker({langPath:'assets/tessdata',logger:m=>console.log(m)});
+            await worker.load(); await worker.loadLanguage('eng'); await worker.initialize('eng');
+            const { data } = await worker.recognize(ev.target.result);
+            lastOCRText=(data.text||'').trim();
+            ocrPreview.textContent=lastOCRText||'No text detected';
+            await worker.terminate();
+            ocrLoader.style.display='none';
+        }catch(err){
+            ocrLoader.style.display='none';
+            ocrPreview.textContent='OCR Error: '+err;
+            console.error(err);
+        }
+    };
+    reader.readAsDataURL(file);
+});
+
+// ===== INSERT OCR =====
+insertOCRBtn.onclick=()=>{
+    if(!lastOCRText){alert('No OCR text to insert!'); return;}
+    inputText.value=lastOCRText;
+    generateFromInput();
+    scrollToSection('buttonsContainer');
+};
+
+// ===== TTS =====
+ttsBtn.onclick=()=>{
+    const text=inputText.value.trim()||lastOCRText;
+    if(!text){alert('No text to read aloud!'); return;}
+    if(currentSpeech) speechSynthesis.cancel();
+    currentSpeech=new SpeechSynthesisUtterance(text);
+    currentSpeech.lang='en-GB';
+    speechSynthesis.speak(currentSpeech);
+    ttsBtn.textContent='🔊 Speaking...';
+    currentSpeech.onend=()=>ttsBtn.textContent='🔊 Read';
+};
+pauseBtn.onclick=()=>{
+    if(!speechSynthesis.speaking) return;
+    if(speechSynthesis.paused){speechSynthesis.resume(); pauseBtn.textContent='⏸️';}
+    else{speechSynthesis.pause(); pauseBtn.textContent='▶️';}
+};
+
+// ===== GENERATE & CLEAR =====
+generateBtn.onclick=generateFromInput;
+clearBtn.onclick=()=>{
+    inputText.value=''; resultsBox.textContent='No results yet.'; buttonsContainer.innerHTML='';
+    iframe.src=''; lastOCRText=''; localStorage.removeItem('fleetButtons');
+};
+
+// ===== COPY =====
+copyBtn.onclick=()=>{
+    const text=resultsBox.textContent.trim();
+    if(!text||text.startsWith('No')){alert('No fleet numbers to copy!'); return;}
+    navigator.clipboard.writeText(text);
+    copyBtn.textContent='✅ Copied!';
+    setTimeout(()=>copyBtn.textContent='📋 Copy Fleet Numbers',1500);
+};
+
+// ===== EXPORT PREVIEW =====
+exportImgBtn.onclick=()=>{
+    html2canvas(document.getElementById('previewContainer')).then(canvas=>{
+        const asset=iframe.dataset.asset||'UNKNOWN';
+        const now=new Date();
+        const fname=`LVF-${asset}-${now.toISOString().slice(0,19).replace(/[:T]/g,'_')}.jpg`;
+        canvas.toBlob(blob=>{
+            const a=document.createElement('a');
+            a.href=URL.createObjectURL(blob);
+            a.download=fname;
+            a.click();
+        },'image/jpeg',0.95);
+    });
+};
+
+// ===== MEDIA MENU & MODAL =====
+function openMedia(index=0){
+    currentIndex=index;
+    modelImage.src=modelImages[currentIndex];
+    menuModal.style.display='none';
+    selectedModal.style.display='flex';
+}
+
+mediaBtn.onclick=()=>{mediaModal.style.display='flex';menuModal.style.display='grid';selectedModal.style.display='none';};
+closeModal.onclick=()=>{selectedModal.style.display='none';menuModal.style.display='grid';};
+mediaModal.onclick=e=>{if(e.target===mediaModal){mediaModal.style.display='none';selectedModal.style.display='none';menuModal.style.display='grid';}};
+modalPrev.onclick=()=>{currentIndex=(currentIndex-1+modelImages.length)%modelImages.length;modelImage.src=modelImages[currentIndex];};
+modalNext.onclick=()=>{currentIndex=(currentIndex+1)%modelImages.length;modelImage.src=modelImages[currentIndex];};
+modalShare.onclick=()=>{let email=prompt('Enter email to share image:'); if(email){alert(`Shared image ${modelImage.src} to ${email}`);}};
+
+// ===== TOUCH ZOOM & DRAG =====
+let touchZoomLevel = 1;
+const ZOOM_STEP = 0.25;
+const MAX_ZOOM = 4;
+let lastTap = 0;
+let touchStartX = 0, touchStartY = 0;
+let initialX = 0, initialY = 0;
+let isTouchDragging = false;
+
+function resetImageZoom() {
+    touchZoomLevel = 1;
+    imgX = 0; imgY = 0;
+    modelImage.style.transform = `translate(0px,0px) scale(1)`;
+}
+
+modelImage.addEventListener('touchstart', function(e){
+    if(e.touches.length === 1){
+        const now = Date.now();
+        if(now - lastTap < 300){
+            resetImageZoom();
+            lastTap = 0;
+            return;
+        }
+        lastTap = now;
+
+        touchStartX = e.touches[0].clientX - imgX;
+        touchStartY = e.touches[0].clientY - imgY;
+        initialX = imgX;
+        initialY = imgY;
+        isTouchDragging = true;
+    }
+});
+
+modelImage.addEventListener('touchmove', function(e){
+    if(!isTouchDragging) return;
+    imgX = e.touches[0].clientX - touchStartX;
+    imgY = e.touches[0].clientY - touchStartY;
+    modelImage.style.transform = `translate(${imgX}px, ${imgY}px) scale(${touchZoomLevel})`;
+    e.preventDefault();
+},{passive:false});
+
+modelImage.addEventListener('touchend', function(e){
+    if(!isTouchDragging) return;
+    isTouchDragging = false;
+    if(Math.abs(imgX - initialX) < 5 && Math.abs(imgY - initialY) < 5){
+        touchZoomLevel = Math.min(MAX_ZOOM, touchZoomLevel + ZOOM_STEP);
+        modelImage.style.transform = `translate(${imgX}px, ${imgY}px) scale(${touchZoomLevel})`;
+    }
+});
+
+// ===== MOUSE DRAG =====
+modelImage.onmousedown=e=>{isDragging=true;startX=e.clientX-imgX;startY=e.clientY-imgY;modelImage.style.cursor='grabbing';};
+document.onmousemove=e=>{if(!isDragging) return; imgX=e.clientX-startX; imgY=e.clientY-startY; modelImage.style.transform=`translate(${imgX}px,${imgY}px)`;};
+document.onmouseup=()=>{isDragging=false; modelImage.style.cursor='grab';};
+
+// ===== WEBVIEW-SAFE PDF OPENER =====
+function openPDF_WebViewSafe(path) {
+    const frame = document.createElement("iframe");
+    frame.style.display = "none";
+    frame.src = path;
+    document.body.appendChild(frame);
+
+    setTimeout(() => {
+        alert("If the PDF did not open, your WebView may block external PDF intents.\nTry an external PDF viewer.");
+    }, 800);
+}
+
+// ===== LOAD HISTORY & POPULATE MENU =====
+window.onload=()=>{
+    const saved=JSON.parse(localStorage.getItem('fleetButtons')||'[]');
+    if(saved.length) buildButtons(saved);
+
+    menuModal.innerHTML='';
+
+    // Add model image buttons
+    modelImages.forEach((imgPath,index)=>{
+        const btn=document.createElement('button');
+        btn.dataset.id=index;
+        const imgEl=document.createElement('img');
+        imgEl.src=imgPath;
+        btn.appendChild(imgEl);
+        btn.appendChild(document.createTextNode(`Model ${index+1}`));
+
+        btn.addEventListener("click",()=>openMedia(index));
+        menuModal.appendChild(btn);
+    });
+
+    // PDF Submenu Button (WebView safe)
+    const pdfBtn=document.createElement('button');
+    pdfBtn.className='pdf-submenu';
+    pdfBtn.textContent='PDF Manual';
+
+    // **Your PDF Path**
+    const pdfPath = "file:///storage/emulated/0/Download/TEMP MHTML/Lvf creation/HTML APP/www/APP Lvf/AssetLocator_FullPackage - TEST/assets/CMS_ENG_2.3.pdf";
+
+    pdfBtn.addEventListener("click", () => {
+        try {
+            let win = window.open(pdfPath, "_blank");
+            if (!win) openPDF_WebViewSafe(pdfPath);
+        } catch {
+            openPDF_WebViewSafe(pdfPath);
+        }
+    });
+
+    menuModal.appendChild(pdfBtn);
+};
+</script>
 </body>
 </html>
+
